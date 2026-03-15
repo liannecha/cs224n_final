@@ -188,12 +188,6 @@ def train(args):
     if dev_acc > best_dev_acc:
       best_dev_acc = dev_acc
       save_model(model, optimizer, args, args.filepath)
-    else:
-      epochs_no_improve += 1
-      # early stopping check
-      if args.patience > 0 and epochs_no_improve >= args.patience:
-        print(f"Early stopping: no improvement for {args.patience} epochs.")
-        break
 
 
 @torch.no_grad()
@@ -235,7 +229,8 @@ def test(args):
     for p, s in zip(test_para_sent_ids, test_para_y_pred):
       f.write(f"{p},{s}\n")
 
-  # optional: save misclassified dev examples for error analysis
+  """ lianne's edits start """
+  # save misclassified dev examples for error analysis
   if args.error_analysis_out:
     raw_dev = load_paraphrase_data(args.para_dev)
     id_to_example = {ex[0]: ex for ex in raw_dev}
@@ -246,6 +241,7 @@ def test(args):
           ex = id_to_example[sid]
           f.write(f"{sid},{ex[1]},{ex[2]},{gold},{pred}\n")
     print(f"error analysis saved to {args.error_analysis_out}")
+    " lianne's edits end"
 
 
 def get_args():
@@ -267,19 +263,13 @@ def get_args():
                       help="The model size as specified on hugging face. DO NOT use the xl model.",
                       choices=['gpt2', 'gpt2-medium', 'gpt2-large'], default='gpt2')
 
-  # full model vs frozen GPT-2
+  """ lianne's edits start """
+  # full model vs last linear layer
   parser.add_argument("--fine_tune_mode", type=str,
                       choices=['full-model', 'last-linear-layer'], default='full-model')
 
-  # dropout on last hidden state
+  # dropout value on last hidden state
   parser.add_argument("--hidden_dropout_prob", type=float, default=0.1)
-
-  # epoch-level logging
-  parser.add_argument("--logfile", type=str, default=None,
-                      help="append epoch,train_loss,dev_acc,dev_f1 rows here")
-
-  # early stopping (0 = off)
-  parser.add_argument("--patience", type=int, default=0)
 
   # classifier head vs cloze-style extraction
   parser.add_argument("--paraphrase_head_type", type=str,
@@ -287,6 +277,7 @@ def get_args():
 
   # error analysis output
   parser.add_argument("--error_analysis_out", type=str, default=None)
+  """ lianne's edits end """
 
   args = parser.parse_args()
   return args
@@ -313,7 +304,7 @@ def add_arguments(args):
 
 if __name__ == "__main__":
   args = get_args()
-  # descriptive checkpoint name: model, mode, epochs, lr
+  # filepath name edited.
   args.filepath = f'paraphrase-{args.model_size}-{args.fine_tune_mode}-{args.epochs}e-{args.lr}.pt'
   seed_everything(args.seed)  # Fix the seed for reproducibility.
   train(args)
