@@ -1,3 +1,6 @@
+"""
+Not my file -- don't touch.
+"""
 # TODO FOR TAs: MODIFY THIS FILE
 
 from typing import Dict, List, Optional, Union, Tuple, BinaryIO

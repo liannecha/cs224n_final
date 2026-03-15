@@ -1,3 +1,6 @@
+"""
+Checked and completed.
+"""
 from typing import Callable, Iterable, Tuple
 import math
 
