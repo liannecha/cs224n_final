@@ -31,43 +31,39 @@ class CausalSelfAttention(nn.Module):
     proj = rearrange(proj, 'b t h d -> b h t d')
     return proj
 
+  # def attention(self, key, query, value, attention_mask):
+  #   # key/query/value: [bs, num_heads, seq_len, d_head]
+  #   bs, num_heads, seq_len, d_head = query.shape
+
+  #   # scaled dot-product scores: [bs, num_heads, seq_len, seq_len]
+  #   scores = torch.matmul(query, key.transpose(-2, -1)) / (d_head ** 0.5)
+
+  #   # causal mask: token i can only see j <= i
+  #   i = torch.arange(seq_len).unsqueeze(1)
+  #   j = torch.arange(seq_len).unsqueeze(0)
+  #   causal_mask = j > i
+  #   scores = scores.masked_fill(causal_mask, float('-inf'))  # block future tokens
+
+  #   # softmax over last dim -> attention weights
+  #   attn_weights = torch.softmax(scores, dim=-1)
+  #   attn_weights = self.dropout(attn_weights)
+
+  #   # weighted sum of values: [bs, num_heads, seq_len, head_size]
+  #   context = torch.matmul(attn_weights, value)
+
+  #   # merge heads -> [bs, seq_len, hidden_size]
+  #   context = rearrange(context, 'b h t d -> b t (h d)')
+  #   return context
+
+
   def attention(self, key, query, value, attention_mask):
-    """
-    Goal: calculate the multi-head attention using softmax(QK^T / sqrt(d))V.
-    Inputs: batch size, number of heads, sequence length, head size
-    key: [bs, num_attention_heads, seq_len, attention_head_size]
-    query: [bs, num_attention_heads, seq_len, attention_head_size]
-    value: [bs, num_attention_heads, seq_len, attention_head_size]
-    attention_mask: [bs, 1, 1, seq_len] ??
-    return: [bs, seq_len, hidden_state] ??
-    """
-    # extract dim of Q/K/V
-    bs, num_attention_heads, seq_len, attention_head_size = query.size()
+    # fused flash-attention: https://docs.pytorch.org/tutorials/intermediate/scaled_dot_product_attention_tutorial.html
+    dropout_p = self.dropout.p if self.training else 0
+    context = torch.nn.functional.scaled_dot_product_attention(
+        query, key, value, is_causal=True, dropout_p=dropout_p
+    )
 
-    # calculate attention scores; scaled by sqrt(d) for stability
-    attn_scores = torch.matmul(query, key.transpose(-1, -2)) / (d ** 0.5)
-
-    # causal mask (prevent access to future tokens)
-    i = torch.arange(seq_len).unsqueeze(1)  # shape [seq_len, 1]
-    j = torch.arange(seq_len).unsqueeze(0)  # shape [1, seq_len]
-
-    causal_mask = j > i
-
-    # mask out future tokens with -inf (so that after softmax they become 0)
-    attn_scores = attn_scores.masked_fill(causal_mask, float('-inf'))
-
-    # Add (padding) attention mask if provided (broadcasts over heads and query positions)
-    if attention_mask is not None:
-      attn_scores = attn_scores + attention_mask
-
-    # Normalize to probabilities
-    attn_probs = torch.softmax(attn_scores, dim=-1)
-    attn_probs = self.dropout(attn_probs)
-
-    # Weighted sum of values: [bs, h, t, d]
-    context = torch.matmul(attn_probs, value)
-
-    # Merge heads back: [bs, t, h*d] = [bs, seq_len, hidden_size]
+    # merge heads -> [bs, seq_len, hidden_size]
     context = rearrange(context, 'b h t d -> b t (h d)')
     return context
 

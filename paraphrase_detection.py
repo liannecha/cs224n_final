@@ -71,8 +71,17 @@ class ParaphraseGPT(nn.Module):
     """
 
     'Takes a batch of sentences and produces embeddings for them.'
-    ### YOUR CODE HERE
-    raise NotImplementedError
+    # run input through GPT-2 transformer stack
+    gpt_output = self.gpt(input_ids, attention_mask)
+
+    # grab the last non-padding token — this is the "prediction position"
+    # i.e. the model should output yes/no here in cloze style
+    last_token_hidden = gpt_output['last_token']
+
+    # project to full vocab logits; argmax will give token id 8505 (yes) or 3919 (no)
+    logits = self.gpt.hidden_state_to_token(last_token_hidden)
+
+    return logits
 
 
 
