@@ -1,52 +1,109 @@
-# CS 224N Default Final Project: Build GPT-2
+# Build GPT-2 Final Project
 
-This is the default final project for the Stanford CS 224N class. Please refer to the project handout on the course
-website for detailed instructions and an overview of the codebase.
+## Overview
+This project implements a GPT-2–style Transformer model to perform multiple natural language processing tasks, including sentiment classification, paraphrase detection, and text generation. The goal is to evaluate how effectively pretrained language representations transfer to downstream tasks while minimizing the number of parameters updated during training.
 
-This project comprises two parts. In the first part, you will implement some important components of the GPT-2 model to
-better understand its architecture.
-In the second part, you will use the token embeddings produced by your GPT-2 model on two downstream tasks: paraphrase
-detection and sonnet generation. You will implement extensions to improve your model's performance on these tasks.
+---
 
-In broad strokes, Part 1 of this project targets:
+## Problem
+Large language models achieve strong performance across many NLP tasks, but full fine-tuning can be computationally expensive. This project investigates:
+- how well GPT-2 representations transfer across tasks  
+- whether lightweight fine-tuning is sufficient  
+- how dataset characteristics affect downstream performance  
 
-* modules/attention.py: Missing code blocks.
-* modules/gpt2_layer.py: Missing code blocks.
-* models/gpt2.py: Missing code blocks.
-* classifier.py: Missing code blocks.
-* optimizer.py: Missing code blocks.
+---
 
-To test Part 1, you will run:
+## Approach
 
-* `optimizer_test.py`: To test your implementation of `optimizer.py`.
-* `sanity_check.py`: To test your implementation of GPT models.
-* `classifier.py` : To perform sentiment classification using your models.
+### Model Architecture
+- GPT-2–style Transformer decoder implemented in PyTorch  
+- Components:
+  - masked multi-head self-attention  
+  - position-wise feed-forward layers  
+  - residual connections  
+  - layer normalization  
+- Tokenization: Byte Pair Encoding (BPE)
 
-In Part 2 of this project, you will use GPT2 (via cloze-style classification) detect if one sentence is a paraphrase of 
-another as well as generate sonnets via autoregressive language modeling.  
+### Task Adaptation
+The model is adapted to different tasks using lightweight prediction heads:
 
-To test Part 2, you will run:
+- **Sentiment Classification**
+  - Input: single sentence  
+  - Output: binary sentiment label  
 
-* `paraphrase_detection.py`: To perform paraphrase detection. 
-* `sonnet_generation.py`: To perform sonnet generation.
+- **Paraphrase Detection**
+  - Input: sentence pairs  
+  - Output: paraphrase / non-paraphrase  
 
-Important: Adjust training hyperparameters, particularly batch size, according to your GPU's specifications to optimize performance and prevent out-of-memory errors.
+- **Text Generation**
+  - Input: partial sonnet (first 3 lines)  
+  - Output: generated continuation (autoregressive)
 
-## Pre-testing instructions
+---
 
-While there are missing code blocks that you need to implement in both of these files, the main focus of this second 
-part are the extensions: how you modify your GPT2 model to improve its ability to determine if one sentence is a 
-paraphrase of another as well as its ability to generate sonnets. 
+## Training Strategies
 
-## Setup instructions
+We compare two fine-tuning approaches:
 
-Follow `setup.sh` to properly setup a conda environment and install dependencies.
+1. **Last-Layer Fine-Tuning**
+   - Freeze GPT-2 parameters  
+   - Train only the final classification layer  
+   - Efficient but limited adaptability  
 
-## Acknowledgement
+2. **Full-Model Fine-Tuning**
+   - Update all model parameters  
+   - Higher computational cost  
+   - Better performance on complex tasks  
 
-This project is adapted from a prior year's CS 224N
-project [Implement BERT](https://web.stanford.edu/class/archive/cs/cs224n/cs224n.1246/project/default-final-project-handout-minbert-spr2024-updated.pdf)
-.
+---
 
-Parts of the code are from the [`transformers`](https://github.com/huggingface/transformers)
-library ([Apache License 2.0](./LICENSE)).
+## Datasets
+
+- **SST (Stanford Sentiment Treebank)**  
+  Short movie review sentences with sentiment labels  
+
+- **CFIMDB**  
+  Longer movie reviews with binary sentiment labels  
+
+- **Quora Question Pairs**  
+  Sentence pairs labeled as paraphrase or non-paraphrase  
+
+- **Shakespeare Sonnets**  
+  Corpus used for conditional text generation  
+
+---
+
+## Results
+
+| Task                     | Dataset | Metric                  | Result        |
+|--------------------------|--------|--------------------------|--------------|
+| Sentiment Classification | SST    | Accuracy                 | 0.452        |
+| Sentiment Classification | CFIMDB | Accuracy                 | 0.780        |
+| Paraphrase Detection     | Quora  | Accuracy / F1            | **0.813 / 0.795** |
+| Text Generation          | Sonnets| Training Loss            | 5.15 → 3.87  |
+
+### Key Findings
+- GPT-2 representations transfer well to semantic similarity tasks  
+- Best performance achieved on paraphrase detection  
+- Longer text inputs (CFIMDB) yield better sentiment performance than short sentences (SST)  
+- Generated text captures stylistic patterns but may lose coherence over longer sequences  
+
+---
+
+## Tech Stack
+- PyTorch  
+- HuggingFace Transformers (tokenizer)  
+- NumPy  
+- tqdm  
+- sacrebleu (for evaluation)
+
+---
+
+## Repository Structure
+
+```bash
+models/              # GPT-2 model implementation  
+datasets/            # Dataset loading and preprocessing  
+training/            # Training scripts  
+evaluation/          # Evaluation metrics and scripts  
+utils/               # Helper functions  
